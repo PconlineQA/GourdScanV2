@@ -12,7 +12,7 @@ FROM ubuntu:14.04
 
 #get all the environment
 RUN apt-get update
-RUN apt-get install -y redis-server python python-pip zip wget vim openssh-server python-libpcap libpcap-dev
+RUN apt-get install -y redis-server python python-pip zip wget vim openssh-server python-libpcap libpcap-dev net-tools
 RUN pip install --upgrade pip
 RUN pip install tornado requests redis scapy
 RUN wget https://github.com/sqlmapproject/sqlmap/zipball/master
