@@ -88,7 +88,7 @@ def scan_start():
                 t.start()
             else:
                 conn.lrem("running", 1, reqhash)
-                conn.lpush("finished", reqhash)
+                #conn.lpush("finished", reqhash)
         except Exception,e:
             out.error(str(e))
     return
