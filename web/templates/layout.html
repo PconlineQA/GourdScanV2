@@ -69,6 +69,27 @@
                     <li>
                         <a href="/config"><i class="zmdi zmdi-view-dashboard"></i> <span> Config </span> </a>
                     </li>
+                    <li>
+                            <a></a>
+                        </li>
+                        <li>
+                            <div style="color: #fff;padding: 11px;" id="server_cam"></div>
+                        </li>
+                        <li>
+                            <div style="color: #fff;padding: 11px;" id="redis_cam"></div>
+                        </li>
+                        <li>
+                            <div style="color: #fff;padding: 11px;" id="scan_cam"></div>
+                        </li>
+                        <li>
+                            <div style="color: #fff;padding: 11px;" id="proxy_cam"></div>
+                        </li>
+                        <li>
+                            <div style="color: #fff;padding: 11px;" id="sqlmap_cam"></div>
+                        </li>
+                        <li>
+                            <div style="color: #fff;padding: 11px;" id="appscan_cam"></div>
+                        </li>
                 </ul>
             </div>
         </div>
@@ -94,5 +115,21 @@
 <script src="static/plugin/jquery.poshytip.min.js"></script>
 <script src="static/js/jquery.core.js"></script>
 <script src="static/js/jquery.app.js"></script>
+<script type="text/javascript">
+    var ws = new WebSocket("ws://"+window.location.host+"/port_online");
+    ws.onmessage = function(e) {
+        var port_status =  JSON.parse(e.data);
+//        console.log(port_status)
+        if(port_status.code>0){
+            for(var port of port_status.data){
+                if(port.status == 'open'){
+                    $("#"+port.type+"_cam").html(port.type+' <i class="fa fa-lg fa-circle-o-notch fa-spin"></i>');            
+                }else{
+                    $("#"+port.type+"_cam").html(port.type+' <i class="fa fa-lg fa-close"></i>');            
+                }
+            }
+        }
+    }
+</script>
 </body>
 </html>

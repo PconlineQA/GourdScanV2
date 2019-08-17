@@ -69,8 +69,13 @@ def requests_convert(request):
     request['url'] = query_collect(query, request['url'])
     return request
 
+def logdebug(message):
+    f = open('/data/GourdScanV2/check.log', 'a')
+    f.write('%s\n'%message)
+    f.close()
 
 def scan_start():
+    logdebug("scan start")
     while config.load()['scan_stat'].lower() == "true":
         try:
             while thread_filled():
@@ -83,12 +88,18 @@ def scan_start():
             request = json.loads(ds(reqed))
             rules = config.load_rule()['scan_type']
             url = urlparse.urlparse(request['url']).query
-            if (request['method'] == "GET" and url != "") or (request['method'] == "POST" and (request["postdata"] != "" or url != "")):
+            logdebug("urlparse:%s"%url)
+            parten = ".*pc.*.com.cn"
+            rex = re.compile(parten, re.I)
+            res = rex.search(request['url'])
+            if res:
+                logdebug("correct:%s"%request['url'])
+            if (request['method'] == "GET" and url != "" and res) or (request['method'] == "POST" and (request["postdata"] != "" or url != "") and res):
                 t = threading.Thread(target=new_scan, args=(reqhash, requests_convert(request), rules))
                 t.start()
             else:
                 conn.lrem("running", 1, reqhash)
-                #conn.lpush("finished", reqhash)
+                conn.lpush("norunning", reqhash)
         except Exception,e:
             out.error(str(e))
     return

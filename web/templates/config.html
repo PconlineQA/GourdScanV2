@@ -40,6 +40,19 @@
                      </div>
                      <div class="col-lg-6 col-md-6">
                         <div class="card-box">
+                            <h4> Appscan Listen Config :</h4>
+                            <div class="form-inline">
+                                <label class="form-label config-label">IP:</label>
+                                <input type="text" value="{{config['appscan_address']}}" class="form-control config-input" name="appscan_address">
+                            </div>
+                            <div class="form-inline">
+                                <label class="form-label config-label">Port:</label>
+                                <input type="number" value="{{config['appscan_port']}}" class="form-control config-input" name="appscan_port">
+                            </div>
+                        </div>
+                     </div>
+                     <div class="col-lg-6 col-md-6">
+                        <div class="card-box">
                             <h4> Session Config:</h4>
                             <div class="form-inline">
                                 <label class="form-label config-label">Session_size:</label>

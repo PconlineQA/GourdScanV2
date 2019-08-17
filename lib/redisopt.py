@@ -4,6 +4,7 @@ import json
 import redis
 import base64
 import urlparse
+import time
 
 from hashlib import md5
 
@@ -64,7 +65,8 @@ def content_deal(headers, host, method, postdata, uri, packet):
             'method': method,
             'postdata': postdata,
             'url': uri,
-            'packet': packet
+            'packet': packet,
+            'time': time.time()
         }
         b64req = base64.encodestring(json.dumps(request))
         if conn.hsetnx("request", reqhash, b64req):

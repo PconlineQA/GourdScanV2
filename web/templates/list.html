@@ -18,16 +18,26 @@
                         <li><a href="/list?type={{list_type}}&start={{end_num}}" aria-label="first"><span aria-hidden="true">&raquo;</span></a></li>
                     </ul>
                     <button style="float:right;margin:20px 0" class="btn btn-danger btn-lg" onclick="window.location.href='/del?type={{list_type}}'">Del all</button>
+                    <button style="float:right;margin:20px 0" class="btn btn-success btn-lg" onclick="window.location.href='/retry?type={{list_type}}'">Retry all</button>
+                    <button style="float:right;margin:20px 10px" class="btn btn-info btn-lg" onclick="window.location.href='/to_appScan?type={{list_type}}&host='+$('#scan_host').val()">To AppScan</button>
+                    <input style="float:right;margin:20px auto;width: 200px;" id="scan_host" class="form-control" type="text" required="" placeholder="appsacn扫描域名" name="account">
                     <div class="panel panel-primary">
                         <div class="panel-heading"><h1>{{list_type}}: {{length}} Reqs</h1></div>
                         <table class="table">
                             <tr>
+                                <th>OPT</th>
+                                <th>Time</th>
                                 <th>Request Hash</th>
                                 <th>Method</th>
                                 <th>Url</th>
                             </tr>
                             {% for item in content %}
                             <tr>
+				                <td>
+                                    <button class="btn btn-danger btn-xs" onclick="window.location.href='/del?type={{list_type}}&hash={{item}}'">Del</button>
+                                    <button class="btn btn-success btn-xs" onclick="window.location.href='/retry?type={{list_type}}&hash={{item}}'">Retry</button>
+                                </td>
+                                <td>{{req_content[item].split("|")[4]}}</td>
                                 <td><a class="a-{{req_content[item].split("|")[3]}}" href="req?hash={{item}}">{{item}}</a></td>
                                 <td>{{req_content[item].split("|")[0]}}</td>
                                 <td><a target="_blank" href="{{req_content[item].split("|")[1]}}">{{req_content[item].split("|")[2]}}</a></td>
@@ -47,6 +57,7 @@
                         <li><a href="/list?type={{list_type}}&start={{end_num}}" aria-label="first"><span aria-hidden="true">&raquo;</span></a></li>
                     </ul>
                     <button style="float:right;margin:20px 0" class="btn btn-danger btn-lg" onclick="window.location.href='/del?type={{list_type}}'">Del all</button>
+                    <button style="float:right;margin:20px 0" class="btn btn-success btn-lg" onclick="window.location.href='/retry?type={{list_type}}'">Retry all</button>
                 </div>
             </div>
         </div>

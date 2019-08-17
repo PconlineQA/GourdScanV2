@@ -5,8 +5,9 @@ import json
 import base64
 import urllib
 import threading
-
+import time
 import tornado.web
+import requests
 
 from lib.redisopt import conn
 from lib import out
@@ -16,6 +17,7 @@ from lib import config
 from lib import session
 from proxy import pyscapy, mix_proxy, proxy_io
 from web.handlers.base import BaseHandler, authenticated
+from tornado.websocket import WebSocketHandler
 
 class PageNotFoundHandler(tornado.web.RequestHandler):
 
@@ -61,9 +63,10 @@ class IndexHandler(BaseHandler):
         waiting = conn.lrange("waiting", 0, 15)
         running = conn.lrange("running", 0, 15)
         finished = conn.lrange("finished", 0, 15)
+        norunning = conn.lrange("norunning", 0, 15)
         vulnerable = conn.lrange("vulnerable", 0, 15)
         stats_all = {}
-        for i in [waiting, running, finished, vulnerable]:
+        for i in [waiting, running, finished, norunning, vulnerable]:
             for reqhash in i:
                 try:
                     decode_results = json.loads(base64.b64decode(conn.hget("results", reqhash)))
@@ -73,7 +76,7 @@ class IndexHandler(BaseHandler):
                 stat = decode_results['stat']
                 stat = stats[stat]
                 stats_all[reqhash] = stat
-        self.render("index.html", waiting_num=conn.llen("waiting"), running_num=conn.llen("running"), finished_num=conn.llen("finished"), vulnerable_num=conn.llen("vulnerable"), waiting=waiting, running=running, finished=finished, vulnerable=vulnerable, time=config.load()["flush_time"], stats_all=stats_all)
+        self.render("index.html", waiting_num=conn.llen("waiting"), running_num=conn.llen("running"), finished_num=conn.llen("finished"), norunning_num=conn.llen("norunning"), vulnerable_num=conn.llen("vulnerable"), waiting=waiting, running=running, finished=finished, norunning=norunning, vulnerable=vulnerable, time=config.load()["flush_time"], stats_all=stats_all)
         return
 
 
@@ -141,6 +144,10 @@ class ScanStatHandler(BaseHandler):
         config.update(config_all)
         if stat.lower() == "true":
             thread = threading.Thread(target=scan.scan_start, args=())
+            thread.setDaemon(True)
+            thread.start()
+            from lib import portscan
+            thread = threading.Thread(target=portscan.scan_start, args=())
             thread.setDaemon(True)
             thread.start()
         return self.write(out.jump("/scan_config"))
@@ -212,8 +219,13 @@ class ListHandler(BaseHandler):
         pages = range(pages_first, pages_last + 1)
         content = conn.lrange(list_type, start, last)
         req_content = {}
+        lost_content= []
         for reqhash in content:
-            decode_content = json.loads(base64.b64decode(conn.hget("request", reqhash)))
+            try:
+                decode_content = json.loads(base64.b64decode(conn.hget("request", reqhash)))
+            except Exception,e:
+                lost_content.append(reqhash)
+                continue
             try:
                 decode_results = json.loads(base64.b64decode(conn.hget("results", reqhash)))
             except:
@@ -227,7 +239,39 @@ class ListHandler(BaseHandler):
             stat = decode_results['stat']
             stat = stats[stat]
             req_content[reqhash] += "|" + stat
+            req_content[reqhash] += "|" + time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(decode_content['time']))
+        for i in lost_content:
+            content.remove(i)
         return self.render("list.html", page_now=page_now, page_num=page_num, pages=pages, content=content, list_type=list_type, length=length, req_content=req_content, end_num=end_num)
+
+class AppScanHandler(BaseHandler):
+
+    @authenticated
+    def get(self):
+        list_type = self.get_argument("type")
+        scan_host = self.get_argument("host")
+        start = 0
+        length = conn.llen(list_type)
+        content = conn.lrange(list_type, start, length)
+        proxy_addr = config.load()['appscan_address']+":"+config.load()['appscan_port']
+        proxies = {"http": "http://"+proxy_addr, "https": "http://"+proxy_addr, }
+        print proxies
+        for reqhash in content:
+            try:
+                request = json.loads(base64.b64decode(conn.hget("request", reqhash)))
+            except Exception,e:
+                continue
+            if scan_host not in request['url']:
+                continue
+            try:
+                if request['method'] == 'GET':
+                    res = requests.get(url=request['url'], headers=request['headers'], verify=False, proxies=proxies, timeout=10)
+                elif request['method'] == 'POST':
+                    res = requests.post(url=request['url'], headers=request['headers'], data=request['postdata'], verify=False, proxies=proxies, timeout=10)
+            except Exception, e:
+                print e
+                continue
+        return self.write(out.alert("set success!", "/list?type="+list_type))
 
 
 class ProxyHandler(BaseHandler):
@@ -319,12 +363,55 @@ class DelHandler(BaseHandler):
     @authenticated
     def get(self):
         del_type = self.get_argument("type")
-        if del_type in ['waiting', 'finished', 'running', 'vulnerable']:
-            conn.delete(del_type)
-        elif del_type == "flushdb":
-            conn.flushdb()
-            return self.write(out.jump("/"))
+        if self.request.arguments.has_key("hash"):
+            request_hash = self.get_argument("hash")
+            conn.hdel("request", request_hash)
+            for del_type1 in ['waiting', 'finished', 'running', 'vulnerable']:
+                conn.lrem(del_type1, 0, request_hash)
+            try:
+                conn.hdel("results", request_hash)
+            except:
+                pass
+        else:
+            if del_type in ['waiting', 'finished', 'running', 'vulnerable']:
+                conn.delete(del_type)
+            elif del_type == "flushdb":
+                conn.flushdb()
+                return self.write(out.jump("/"))
         return self.write(out.jump("/list?type=" + del_type))
+
+class RetryHandler(BaseHandler):
+
+    @authenticated
+    def get(self):
+        retry_type = self.get_argument("type")
+        if self.request.arguments.has_key("hash"):
+            request_hash = self.get_argument("hash")
+            for del_type1 in ['finished', 'running', 'vulnerable']:
+                conn.lrem(del_type1, 0, request_hash)
+            try:
+                conn.hdel("results", request_hash)
+            except:
+                pass
+            conn.lpush('waiting', request_hash)
+        else:
+            if retry_type in ['finished', 'running', 'vulnerable']:
+                while conn.llen(retry_type) > 0:
+                    reqhash = conn.rpoplpush(retry_type, "waiting")
+                    try:
+                        conn.hdel("results", reqhash)
+                    except:
+                        pass
+                    for del_type2 in ['finished', 'running', 'vulnerable']:
+                        if retry_type != del_type2:
+                            conn.lrem(del_type2, 0, reqhash)
+                    try:
+                        conn.hdel("results", reqhash)
+                    except:
+                        pass
+                conn.delete(retry_type)
+        return self.write(out.jump("/list?type=" + retry_type))
+
 
 class ResetScanHandler(BaseHandler):
 
@@ -336,3 +423,25 @@ class ResetScanHandler(BaseHandler):
         while stat:
             stat = conn.rpoplpush("running", "waiting")
         return self.write(out.alert("reset success!", "/scan_stat?stat=true"))
+
+class PortScanHandler(WebSocketHandler):
+
+    users = set()  # 用来存放在线用户的容器
+
+    def open(self):
+        self.users.add(self)  # 建立连接后添加用户到容器中
+        for u in self.users:  # 向已在线用户发送消息
+            u.write_message('{"data":"","msg":"' + self.request.remote_ip + '-进入","code":1}')
+
+    def on_message(self, message):
+        for u in self.users:  # 向在线用户广播消息
+            u.write_message('{"data":"' + message + '","msg":"' + self.request.remote_ip + '-消息","code":2}')
+
+    def on_close(self):
+        self.users.remove(self)  # 用户关闭连接后从容器中移除用户
+        for u in self.users:
+            u.write_message('{"data":"","msg":"' + self.request.remote_ip + '-离开","code":0}')
+
+    def check_origin(self, origin):
+        return True  # 允许WebSocket的跨域请求
+
