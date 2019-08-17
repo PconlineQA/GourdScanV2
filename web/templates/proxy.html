@@ -17,7 +17,6 @@
                         <br>
                         <button type="submit" class="btn btn-danger btn-lg btn-block">Update Proxy Config</button>
                     </form><br>
-                    <button onclick="window.location.href='/del?type=flushdb'" class="btn btn-danger btn-lg btn-block">Flush redis db!!!</button><br>
                     {% if stat == "True" %}
                     <button onclick="window.location.href='/proxy?type={{proxy_type}}&stat=False'" class="btn btn-danger btn-lg btn-block">Stop Proxy</button>
                     {% else %}

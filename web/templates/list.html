@@ -17,7 +17,6 @@
                         {% end %}
                         <li><a href="/list?type={{list_type}}&start={{end_num}}" aria-label="first"><span aria-hidden="true">&raquo;</span></a></li>
                     </ul>
-                    <button style="float:right;margin:20px 0" class="btn btn-danger btn-lg" onclick="window.location.href='/del?type={{list_type}}'">Del all</button>
                     <button style="float:right;margin:20px 0" class="btn btn-success btn-lg" onclick="window.location.href='/retry?type={{list_type}}'">Retry all</button>
                     <button style="float:right;margin:20px 10px" class="btn btn-info btn-lg" onclick="window.location.href='/to_appScan?type={{list_type}}&host='+$('#scan_host').val()">To AppScan</button>
                     <input style="float:right;margin:20px auto;width: 200px;" id="scan_host" class="form-control" type="text" required="" placeholder="appsacn扫描域名" name="account">
@@ -56,7 +55,6 @@
                         {% end %}
                         <li><a href="/list?type={{list_type}}&start={{end_num}}" aria-label="first"><span aria-hidden="true">&raquo;</span></a></li>
                     </ul>
-                    <button style="float:right;margin:20px 0" class="btn btn-danger btn-lg" onclick="window.location.href='/del?type={{list_type}}'">Del all</button>
                     <button style="float:right;margin:20px 0" class="btn btn-success btn-lg" onclick="window.location.href='/retry?type={{list_type}}'">Retry all</button>
                 </div>
             </div>
