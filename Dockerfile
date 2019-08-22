@@ -8,7 +8,7 @@
 ############################################################
 
 
-FROM ubuntu:14.04
+FROM ubuntu
 
 #get all the environment
 RUN apt-get update
